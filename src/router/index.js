@@ -3,8 +3,7 @@ import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import Dashboard from '../views/Dashboard.vue'
 import Lancamentos from '../views/Lancamentos.vue'
-import Gastos from '../views/Gastos.vue'
-import Relatorios from '../views/Relatorios.vue'
+import ReceitasDespesas from '../views/ReceitasDespesas.vue'
 
 const routes = [
   { path: '/', redirect: '/login' },
@@ -12,8 +11,7 @@ const routes = [
   { path: '/register', component: Register },
   { path: '/dashboard', component: Dashboard },
   { path: '/lancamentos', component: Lancamentos },
-  { path: '/gastos', component: Gastos },
-  { path: '/relatorios', component: Relatorios }
+  { path: '/deceitasdespesas', component: ReceitasDespesas },
 ]
 
 export const router = createRouter({

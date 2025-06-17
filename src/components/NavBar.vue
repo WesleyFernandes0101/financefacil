@@ -3,7 +3,7 @@
     <div class="space-x-4">
       <RouterLink to="/dashboard">Dashboard</RouterLink>
       <RouterLink to="/lancamentos">Lançamentos</RouterLink>
-      <RouterLink to="/gastos">Receitas & Despesas</RouterLink>
+      <RouterLink to="/deceitasdespesas">Receitas & Despesas</RouterLink>
     </div>
     <button @click="logout" class="px-3 py-0 bg-red-500 hover:bg-red-600 text-white rounded transition-colors">Sair</button>
   </nav>
