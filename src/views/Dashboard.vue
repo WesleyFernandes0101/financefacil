@@ -14,22 +14,34 @@
         <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
           <h3 class="text-gray-500 font-medium">Saldo Total</h3>
           <p class="text-2xl font-bold" :class="store.saldo >= 0 ? 'text-green-600' : 'text-red-600'">
-            R$ {{ store.saldo.toFixed(2) }}
+            R$ {{ store.saldo?.toFixed(2) || '0.00' }}
           </p>
         </div>
         
-        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
+        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500 relative">
           <h3 class="text-gray-500 font-medium">Receitas</h3>
           <p class="text-2xl font-bold text-green-600">
-            R$ {{ store.totalReceitas.toFixed(2) }}
+            R$ {{ store.totalReceitas?.toFixed(2) || '0.00' }}
           </p>
+          <button 
+            @click="navigateToLancamentos('receita')"
+            class="absolute top-2 right-2 bg-green-100 text-green-600 hover:bg-green-200 px-3 py-1 rounded-md text-sm font-medium transition"
+          >
+            + 
+          </button>
         </div>
         
-        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-red-500">
+        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-red-500 relative">
           <h3 class="text-gray-500 font-medium">Despesas</h3>
           <p class="text-2xl font-bold text-red-600">
-            R$ {{ store.totalDespesas.toFixed(2) }}
+            R$ {{ store.totalDespesas?.toFixed(2) || '0.00' }}
           </p>
+          <button 
+            @click="navigateToLancamentos('despesa')"
+            class="absolute top-2 right-2 bg-red-100 text-red-600 hover:bg-red-200 px-3 py-1 rounded-md text-sm font-medium transition"
+          >
+            - 
+          </button>
         </div>
       </div>
 
@@ -39,10 +51,14 @@
         <div class="bg-white p-6 rounded-lg shadow-md">
           <h3 class="text-lg font-semibold mb-4">Receitas vs Despesas</h3>
           <div class="h-64">
-            <Bar 
-              :data="chartData" 
+            <BarChart 
+              v-if="barChartData"
+              :chart-data="barChartData"
               :options="chartOptions"
             />
+            <div v-else class="flex items-center justify-center h-full text-gray-500">
+              {{ isLoading ? 'Carregando dados...' : 'Nenhum dado disponível' }}
+            </div>
           </div>
         </div>
 
@@ -50,11 +66,14 @@
         <div class="bg-white p-6 rounded-lg shadow-md">
           <h3 class="text-lg font-semibold mb-4">Distribuição por Categoria</h3>
           <div class="h-64">
-            <Pie 
-              v-if="categoriesData"
-              :data="categoriesData" 
+            <PieChart 
+              v-if="pieChartData"
+              :chart-data="pieChartData"
               :options="chartOptions"
             />
+            <div v-else class="flex items-center justify-center h-full text-gray-500">
+              {{ store.categories?.length === 0 ? 'Nenhuma categoria cadastrada' : (isLoading ? 'Carregando...' : 'Nenhum dado disponível') }}
+            </div>
           </div>
         </div>
       </div>
@@ -65,46 +84,19 @@
 <script setup>
 import NavBar from '../components/NavBar.vue'
 import { useFinanceStore } from '../store'
-import { Bar, Pie } from 'vue-chartjs'
-import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale, ArcElement } from 'chart.js'
-import { computed } from 'vue'
-
-// Registra os componentes do Chart.js
-ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale, ArcElement)
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
+import BarChart from '../components/charts/BarChart.vue'
+import PieChart from '../components/charts/PieChart.vue'
 
 const store = useFinanceStore()
+const router = useRouter() // Obtenha a instância do router
+const isLoading = ref(true)
+const barChartData = ref(null)
+const pieChartData = ref(null)
 
-// Dados para o gráfico de barras
-const chartData = computed(() => ({
-  labels: ['Receitas', 'Despesas'],
-  datasets: [{
-    label: 'Valores (R$)',
-    data: [store.totalReceitas, store.totalDespesas],
-    backgroundColor: ['#10B981', '#EF4444'],
-    borderColor: ['#059669', '#DC2626'],
-    borderWidth: 1
-  }]
-}))
-
-// Dados para o gráfico de pizza (exemplo - adapte conforme sua store)
-const categoriesData = computed(() => {
-  if (!store.categories || store.categories.length === 0) return null
-  
-  return {
-    labels: store.categories.map(c => c.name),
-    datasets: [{
-      data: store.categories.map(c => c.total),
-      backgroundColor: [
-        '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
-        '#EC4899', '#14B8A6', '#F97316', '#64748B', '#06B6D4'
-      ],
-      borderWidth: 1
-    }]
-  }
-})
-
-// Opções comuns para os gráficos
-const chartOptions = {
+// Opções comuns
+const chartOptions = ref({
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
@@ -114,14 +106,94 @@ const chartOptions = {
     tooltip: {
       callbacks: {
         label: function(context) {
-          return `R$ ${context.raw.toFixed(2)}`
+          return `R$ ${(context.raw || 0).toFixed(2)}`
         }
       }
     }
   }
-}
-</script>
+})
 
-<style scoped>
-/* Estilos adicionais podem ser adicionados aqui se necessário */
-</style>
+const navigateToLancamentos = (tipo) => {
+  // Armazena o tipo no store (Pinia) ou localStorage
+  store.setUltimoTipoLancamento(tipo) // Se estiver usando Pinia
+  // Ou: localStorage.setItem('ultimoTipoLancamento', tipo)
+  
+  // Navega para a página de lançamentos
+  router.push('/lancamentos')
+}
+
+// Versão corrigida da função prepareBarChartData
+const prepareBarChartData = () => ({
+  labels: ['Receitas', 'Despesas'],
+  datasets: [
+    {
+      label: 'Valores (R$)', // Corrigido: label deve ser string, não array
+      data: [
+        store.totalReceitas ?? 0, 
+        store.totalDespesas ?? 0
+      ],
+      backgroundColor: ['#10B981', '#EF4444'],
+      borderColor: ['#059669', '#DC2626'],
+      borderWidth: 1
+    }
+  ]
+})
+
+// Prepara os dados do gráfico de pizza
+const preparePieChartData = () => {
+  if (!store.categories || store.categories.length === 0) {
+    return null
+  }
+  
+  const validCategories = store.categories.filter(c => (c.total ?? 0) > 0)
+  if (validCategories.length === 0) return null
+  
+  return {
+    labels: validCategories.map(c => c.name || 'Sem nome'),
+    datasets: [{
+      data: validCategories.map(c => c.total),
+      backgroundColor: validCategories.map(c => c.color || '#64748B'),
+      borderWidth: 1
+    }]
+  }
+}
+
+// Função para lidar com redimensionamento (se necessário)
+const handleResize = () => {
+  barChartData.value = { ...prepareBarChartData() }
+}
+
+// Carrega os dados iniciais
+const loadData = async () => {
+  try {
+    isLoading.value = true
+    await store.loadInitialData()
+    barChartData.value = prepareBarChartData()
+    pieChartData.value = preparePieChartData()
+  } catch (error) {
+    console.error('Erro ao carregar dados:', error)
+    // Fornece fallback visual
+    barChartData.value = null
+    pieChartData.value = null
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(async () => {
+  try {
+    await store.loadInitialData()
+    // Atribui um NOVO objeto para evitar mutações reativas
+    barChartData.value = prepareBarChartData()
+  } catch (error) {
+    console.error('Erro ao carregar dados:', error)
+    barChartData.value = null
+  }
+})
+
+// Hook beforeUnmount (agora corretamente importado)
+onBeforeUnmount(() => {
+  // Se adicionou event listener, remova aqui:
+  // window.removeEventListener('resize', handleResize)
+})
+</script>

@@ -11,7 +11,7 @@ const routes = [
   { path: '/register', component: Register },
   { path: '/dashboard', component: Dashboard },
   { path: '/lancamentos', component: Lancamentos },
-  { path: '/deceitasdespesas', component: ReceitasDespesas },
+  { path: '/receitasdespesas', component: ReceitasDespesas },
 ]
 
 export const router = createRouter({

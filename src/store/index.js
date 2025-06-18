@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { ref } from 'vue' // Importando ref para possíveis reatividades
 
 export const useFinanceStore = defineStore('finance', {
   state: () => ({
@@ -11,48 +12,33 @@ export const useFinanceStore = defineStore('finance', {
       { id: 4, name: 'Salário', tipo: 'receita', color: '#4BC0C0' },
       { id: 5, name: 'Investimentos', tipo: 'receita', color: '#9966FF' },
       { id: 6, name: 'Outros', tipo: 'ambos', color: '#FF9F40' }
-    ]
+    ],
+    isLoading: false,
+    error: null,
+    ultimoTipoLancamento: 'despesa' // Valor padrão
   }),
+  
   getters: {
     totalReceitas() {
       return this.lancamentos
         .filter(l => l.tipo === 'receita')
-        .reduce((sum, l) => sum + l.valor, 0)
+        .reduce((sum, l) => sum + (l.valor || 0), 0)
     },
+    
     totalDespesas() {
       return this.lancamentos
         .filter(l => l.tipo === 'despesa')
-        .reduce((sum, l) => sum + l.valor, 0)
+        .reduce((sum, l) => sum + (l.valor || 0), 0)
     },
+    
     saldo() {
       return this.totalReceitas - this.totalDespesas
     },
-    // Dados para gráficos
-    chartData() {
-      return {
-        bar: {
-          labels: ['Receitas', 'Despesas'],
-          datasets: [{
-            label: 'Valores (R$)',
-            data: [this.totalReceitas, this.totalDespesas],
-            backgroundColor: ['#4CAF50', '#F44336']
-          }]
-        },
-        pie: {
-          labels: this.categoriesData.map(c => c.name),
-          datasets: [{
-            data: this.categoriesData.map(c => c.total),
-            backgroundColor: this.categoriesData.map(c => c.color)
-          }]
-        },
-        line: this.prepareLineChartData()
-      }
-    },
-    // Dados agrupados por categoria
+    
     categoriesData() {
       return this.categories.map(category => {
         const lancamentos = this.lancamentos.filter(l => l.categoriaId === category.id)
-        const total = lancamentos.reduce((sum, l) => sum + l.valor, 0)
+        const total = lancamentos.reduce((sum, l) => sum + (l.valor || 0), 0)
         
         return {
           ...category,
@@ -61,96 +47,130 @@ export const useFinanceStore = defineStore('finance', {
         }
       }).filter(c => c.total > 0)
     },
-    // Últimos lançamentos (para tabela/dashboard)
+    
     ultimosLancamentos() {
       return [...this.lancamentos]
         .sort((a, b) => new Date(b.data) - new Date(a.data))
         .slice(0, 5)
     }
   },
+  
   actions: {
-    login(user) {
-      this.user = user
-      if (!this.lancamentos.length) {
-        this.carregarDadosIniciais()
+    async login(user) {
+      try {
+        this.user = user
+        this.isLoading = true
+        if (!this.lancamentos.length) {
+          await this.loadInitialData()
+        }
+      } catch (error) {
+        this.error = error.message
+        throw error
+      } finally {
+        this.isLoading = false
       }
     },
+
+    removerLancamento(id) {
+    this.lancamentos = this.lancamentos.filter(l => l.id !== id)
+  },
+
+    async adicionarLancamento(lancamento) {
+    try {
+      // Simula uma requisição assíncrona
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      this.lancamentos.unshift({
+        ...lancamento,
+        id: this.generateId(),
+        data: lancamento.data || new Date().toISOString()
+      })
+    } catch (error) {
+      throw error
+    }
+  },
+    
+    setUltimoTipoLancamento(tipo) {
+      this.ultimoTipoLancamento = tipo
+    },
+
     logout() {
       this.user = null
-      this.lancamentos = [] // Opcional: limpar dados ao sair
-      // Adicione aqui qualquer outra limpeza necessária
+      // this.lancamentos = [] // Comentei para manter os dados (opcional)
     },
+    
+    async loadInitialData() {
+      try {
+        this.isLoading = true
+        await this.fetchReceitas()
+        await this.fetchDespesas()
+        await this.fetchCategories()
+      } catch (error) {
+        this.error = error.message
+        console.error('Erro ao carregar dados:', error)
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+    
+    async fetchReceitas() {
+      try {
+        // Simulando uma chamada API - substitua pela sua implementação real
+        // Exemplo com fetch:
+        // const response = await fetch('/api/receitas')
+        // const data = await response.json()
+        // this.lancamentos = [...this.lancamentos, ...data]
+        
+        // Implementação temporária com dados mockados:
+        const receitasMock = [
+          { id: 101, descricao: 'Salário', valor: 5000, tipo: 'receita', categoriaId: 4, data: new Date() },
+          { id: 102, descricao: 'Freelance', valor: 1200, tipo: 'receita', categoriaId: 4, data: new Date() }
+        ]
+        this.lancamentos = [...this.lancamentos, ...receitasMock]
+      } catch (error) {
+        console.error('Erro ao buscar receitas:', error)
+        throw error
+      }
+    },
+    
+    async fetchDespesas() {
+      try {
+        // Implementação similar à fetchReceitas
+        const despesasMock = [
+          { id: 201, descricao: 'Aluguel', valor: 1500, tipo: 'despesa', categoriaId: 3, data: new Date() },
+          { id: 202, descricao: 'Supermercado', valor: 450, tipo: 'despesa', categoriaId: 1, data: new Date() }
+        ]
+        this.lancamentos = [...this.lancamentos, ...despesasMock]
+      } catch (error) {
+        console.error('Erro ao buscar despesas:', error)
+        throw error
+      }
+    },
+    
+    async fetchCategories() {
+      // Se suas categorias forem dinâmicas, implemente a busca aqui
+      // Por enquanto estamos usando as categorias fixas do state
+      return this.categories
+    },
+    
     adicionarLancamento(lancamento) {
       const novoLancamento = {
         ...lancamento,
         id: this.generateId(),
-        categoriaId: lancamento.categoriaId || 6, // Default para "Outros"
-        data: lancamento.data || new Date()
+        categoriaId: lancamento.categoriaId || 6,
+        data: lancamento.data || new Date(),
+        valor: parseFloat(lancamento.valor) || 0
       }
-      this.lancamentos.unshift(novoLancamento) // Adiciona no início do array
+      this.lancamentos.unshift(novoLancamento)
     },
-    carregarDadosIniciais() {
-      const exemplos = [
-        { id: 1, descricao: 'Salário', valor: 5000, tipo: 'receita', categoriaId: 4, data: new Date('2023-01-05') },
-        { id: 2, descricao: 'Aluguel', valor: 1500, tipo: 'despesa', categoriaId: 3, data: new Date('2023-01-10') },
-        { id: 3, descricao: 'Supermercado', valor: 800, tipo: 'despesa', categoriaId: 1, data: new Date('2023-01-15') },
-        { id: 4, descricao: 'Transporte', valor: 300, tipo: 'despesa', categoriaId: 2, data: new Date('2023-01-20') },
-        { id: 5, descricao: 'Dividendos', valor: 200, tipo: 'receita', categoriaId: 5, data: new Date('2023-01-25') }
-      ]
-      this.lancamentos = exemplos
-    },
-    // Métodos auxiliares
+    
     generateId() {
       return this.lancamentos.length > 0 
         ? Math.max(...this.lancamentos.map(l => l.id)) + 1 
         : 1
-    },
-    prepareLineChartData() {
-      // Agrupa por mês (implementação básica - pode ser melhorada)
-      const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-      
-      const receitasPorMes = Array(12).fill(0)
-      const despesasPorMes = Array(12).fill(0)
-      
-      this.lancamentos.forEach(l => {
-        const mes = new Date(l.data).getMonth()
-        if (l.tipo === 'receita') receitasPorMes[mes] += l.valor
-        else despesasPorMes[mes] += l.valor
-      })
-      
-      return {
-        labels: meses,
-        datasets: [
-          {
-            label: 'Receitas',
-            data: receitasPorMes,
-            borderColor: '#4CAF50',
-            tension: 0.1
-          },
-          {
-            label: 'Despesas',
-            data: despesasPorMes,
-            borderColor: '#F44336',
-            tension: 0.1
-          }
-        ]
-      }
     }
   },
-  persist: true // Opcional: Habilita persistência no localStorage
+  
+  persist: true
 })
-
-// // Para acessar os dados dos gráficos:
-// const store = useFinanceStore()
-
-// // Gráfico de barras
-// const barData = store.chartData.bar
-
-// // Gráfico de pizza
-// const pieData = store.chartData.pie
-
-// // Gráfico de linhas
-// const lineData = store.chartData.line
-
-// // Últimos lançamentos
-// const ultimos = store.ultimosLancamentos
