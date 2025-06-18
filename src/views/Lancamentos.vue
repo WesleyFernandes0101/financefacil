@@ -1,7 +1,8 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue' // Adicionei watch aqui
+import { ref, onMounted, watch } from 'vue'
 import { useFinanceStore } from '../store'
 import { useRouter, onBeforeRouteLeave } from 'vue-router'
+import NavBar from '../components/NavBar.vue'
 
 const router = useRouter()
 const store = useFinanceStore()
@@ -10,13 +11,13 @@ const store = useFinanceStore()
 const tipoSelecionado = ref('despesa')
 const descricao = ref('')
 const valor = ref('')
-const categoria = ref('')
+const categoriaId = ref('') // Alterado para categoriaId
 const data = ref(new Date().toISOString().split('T')[0])
 const isLoading = ref(false)
 const hasChanges = ref(false)
 
 // Observa mudanças nos campos para detectar alterações
-watch([descricao, valor, categoria, data], () => {
+watch([descricao, valor, categoriaId, data], () => { // Atualizado para categoriaId
   hasChanges.value = true
 }, { deep: true })
 
@@ -51,7 +52,7 @@ const salvarLancamento = async () => {
     isLoading.value = true
     
     // Validação básica
-    if (!descricao.value || !valor.value || !categoria.value || !data.value) {
+    if (!descricao.value || !valor.value || !categoriaId.value || !data.value) {
       throw new Error('Preencha todos os campos obrigatórios')
     }
 
@@ -59,9 +60,8 @@ const salvarLancamento = async () => {
       tipo: tipoSelecionado.value,
       descricao: descricao.value,
       valor: parseFloat(valor.value),
-      categoria: categoria.value,
-      data: data.value,
-      id: Date.now() // ID temporário
+      categoriaId: parseInt(categoriaId.value), // Usando categoriaId
+      data: data.value
     }
     
     await store.adicionarLancamento(lancamento)
@@ -105,13 +105,13 @@ const voltar = () => {
             :disabled="isLoading"
           >
             <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    class="h-5 w-5 mr-2" 
-    viewBox="0 0 20 20" 
-    fill="currentColor"
-  >
-    <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
-  </svg>
+              xmlns="http://www.w3.org/2000/svg" 
+              class="h-5 w-5 mr-2" 
+              viewBox="0 0 20 20" 
+              fill="currentColor"
+            >
+              <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+            </svg>
           </button>
           <h2 class="text-2xl font-bold text-gray-800">
             {{ tipoSelecionado === 'receita' ? 'Nova Receita' : 'Nova Despesa' }}
@@ -119,7 +119,6 @@ const voltar = () => {
         </div>
         
         <form @submit.prevent="salvarLancamento" class="space-y-4">
-          <!-- Campos do formulário (mantidos iguais) -->
           <!-- Campo Descrição -->
           <div>
             <label class="block text-gray-700 mb-2">Descrição:</label>
@@ -146,18 +145,20 @@ const voltar = () => {
             />
           </div>
           
-          <!-- Campo Categoria -->
+          <!-- Campo Categoria (Atualizado) -->
           <div>
             <label class="block text-gray-700 mb-2">Categoria:</label>
             <select 
-              v-model="categoria"
+              v-model="categoriaId"
               class="border p-2 rounded w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             >
-              <option value="" disabled selected>Selecione uma categoria</option>
+              <option value="" disabled selected>
+                {{ tipoSelecionado === 'receita' ? 'Selecione uma receita' : 'Selecione uma despesa' }}
+              </option>
               <option 
                 v-for="cat in store.categories.filter(c => c.tipo === tipoSelecionado || c.tipo === 'ambos')" 
-                :value="cat.name"
+                :value="cat.id"
                 :key="cat.id"
               >
                 {{ cat.name }}
@@ -185,13 +186,13 @@ const voltar = () => {
               :disabled="isLoading"
             >
               <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    class="h-5 w-5 mr-2" 
-    viewBox="0 0 20 20" 
-    fill="currentColor"
-  >
-    <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
-  </svg>
+                xmlns="http://www.w3.org/2000/svg" 
+                class="h-5 w-5 mr-2" 
+                viewBox="0 0 20 20" 
+                fill="currentColor"
+              >
+                <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+              </svg>
               Voltar
             </button>
             
@@ -219,7 +220,6 @@ const voltar = () => {
 </template>
 
 <style scoped>
-/* Estilos melhorados para feedback visual */
 button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -235,7 +235,6 @@ input:disabled, select:disabled {
   cursor: not-allowed;
 }
 
-/* Melhoria no foco dos campos */
 input:focus, select:focus {
   outline: none;
   ring-width: 2px;

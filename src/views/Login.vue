@@ -1,17 +1,29 @@
 <template>
-  <div class="flex flex-col items-center justify-center h-screen">
-    <h1 class="text-3xl mb-4">Login</h1>
-    <input v-model="email" class="input" placeholder="Email" />
-    <input v-model="senha" type="password" class="input" placeholder="Senha" />
-    <button class="btn" @click="logar">Entrar</button>
-    <p v-if="mensagemErro" class="text-red-500 mt-2">{{ mensagemErro }}</p>
-    <router-link to="/register" class="mt-4 text-blue-500">Não tem conta? Cadastre-se</router-link>
-    
-    <!-- Apenas para desenvolvimento - Mostra credenciais de teste -->
-    <div v-if="ambienteDesenvolvimento" class="mt-8 p-4 bg-gray-100 rounded-lg text-center">
-      <p class="font-bold mb-2">Credenciais de teste (apenas desenvolvimento):</p>
-      <p>Email: <span class="font-mono">teste@example.com</span></p>
-      <p>Senha: <span class="font-mono">123456</span></p>
+  <div class="flex flex-col items-center justify-center h-screen bg-gray-50">
+    <div class="bg-white p-8 rounded-lg shadow-md w-80">
+      <h1 class="text-2xl font-bold mb-6 text-center">Login</h1>
+
+      <input v-model="email" class="input" placeholder="Email" type="email" />
+      <input v-model="senha" type="password" class="input" placeholder="Senha" />
+
+      <div v-if="mensagemErro" class="text-red-600 text-sm mb-4 text-center">
+        {{ mensagemErro }}
+      </div>
+
+      <div class="flex justify-center">
+        <button class="btn" @click="entrar">Entrar</button>
+      </div>
+
+      <router-link to="/register" class="block mt-4 text-center text-blue-500 hover:underline">
+        Criar nova conta
+      </router-link>
+
+      <!-- Apenas para desenvolvimento
+      <div v-if="ambienteDesenvolvimento" class="mt-8 p-4 bg-gray-100 rounded-lg text-center text-sm">
+        <p class="font-semibold mb-1">Login de teste:</p>
+        <p>Email: <code class="font-mono">teste@example.com</code></p>
+        <p>Senha: <code class="font-mono">123456</code></p>
+      </div> -->
     </div>
   </div>
 </template>
@@ -29,23 +41,44 @@ const senha = ref('')
 const mensagemErro = ref('')
 const ambienteDesenvolvimento = import.meta.env.MODE === 'development'
 
-const logar = () => {
-  // Credenciais de teste (apenas para desenvolvimento)
-  const credenciaisValidas = (
-    email.value === 'teste@example.com' && 
-    senha.value === '123456'
+const entrar = () => {
+  mensagemErro.value = ''
+
+  const emailTrim = email.value.trim()
+  const senhaTrim = senha.value.trim()
+
+  // Usuário de teste
+  if (
+    ambienteDesenvolvimento &&
+    emailTrim === 'teste@example.com' &&
+    senhaTrim === '123456'
+  ) {
+    store.login({ email: emailTrim })
+    router.push('/dashboard')
+    return
+  }
+
+  // Usuários reais do localStorage
+  const usuarios = JSON.parse(localStorage.getItem('usuarios') || '[]')
+  const usuario = usuarios.find(
+    (u) => u.email === emailTrim && u.senha === senhaTrim
   )
 
-  if (credenciaisValidas) {
-    store.login({ email: email.value })
+  if (usuario) {
+    store.login({ email: usuario.email })
+    localStorage.setItem('usuarioLogado', JSON.stringify(usuario))
     router.push('/dashboard')
   } else {
-    mensagemErro.value = 'Credenciais inválidas. Use teste@example.com / 123456'
+    mensagemErro.value = 'Email ou senha incorretos.'
   }
 }
 </script>
 
 <style scoped>
-.input { @apply border p-2 mb-2 w-64 rounded }
-.btn { @apply bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 }
+.input {
+  @apply w-full p-2 mb-4 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
+.btn {
+  @apply w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition;
+}
 </style>

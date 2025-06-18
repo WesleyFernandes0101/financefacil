@@ -9,9 +9,7 @@ const props = defineProps({
   chartData: {
     type: Object,
     required: true,
-    validator: (value) => {
-      return value?.labels && value?.datasets
-    }
+    validator: (value) => value?.labels && value?.datasets
   },
   options: {
     type: Object,
@@ -19,12 +17,10 @@ const props = defineProps({
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: {
-          position: 'right',
-        },
+        legend: { position: 'right' },
         tooltip: {
           callbacks: {
-            label: function(context) {
+            label: function (context) {
               const label = context.label || ''
               const value = context.raw || 0
               const total = context.dataset.data.reduce((a, b) => a + b, 0)
@@ -38,24 +34,26 @@ const props = defineProps({
   }
 })
 
-const chartRef = ref(null)
-const chartInstance = ref(null)
+const canvasEl = ref(null) // 🔧 Corrigido
+let chartInstance = null
 
-// Função para renderizar o gráfico
 const renderChart = () => {
-  if (!chartRef.value || !props.chartData?.labels?.length) return
-  
-  // Destrói o gráfico anterior se existir
-  if (chartInstance.value) {
-    chartInstance.value.destroy()
+  if (!canvasEl.value || !props.chartData?.labels?.length) return
+
+  const ctx = canvasEl.value.getContext('2d')
+  if (!ctx) return
+
+  // Destroi gráfico anterior
+  if (chartInstance) {
+    chartInstance.destroy()
+    chartInstance = null
   }
-  
+
   // Cria novo gráfico
-  const ctx = chartRef.value.getContext('2d')
-  chartInstance.value = new Chart(ctx, {
+  chartInstance = new Chart(ctx, {
     type: 'pie',
-    data: props.chartData,
-    options: props.options
+    data: JSON.parse(JSON.stringify(props.chartData)),
+    options: JSON.parse(JSON.stringify(props.options))
   })
 }
 
@@ -67,16 +65,16 @@ watch(() => props.chartData, renderChart, { deep: true })
 
 // Atualiza quando as opções mudam
 watch(() => props.options, (newOptions) => {
-  if (chartInstance.value) {
-    chartInstance.value.options = newOptions
-    chartInstance.value.update()
+  if (chartInstance) {
+    chartInstance.options = newOptions
+    chartInstance.update()
   }
 }, { deep: true })
 </script>
 
 <template>
   <div class="pie-chart-container">
-    <canvas ref="chartRef"></canvas>
+    <canvas ref="canvasEl"></canvas>
     <div v-if="!chartData?.labels?.length" class="no-data-message">
       Nenhum dado disponível para exibir
     </div>
@@ -88,7 +86,12 @@ watch(() => props.options, (newOptions) => {
   position: relative;
   width: 100%;
   height: 100%;
-  min-height: 300px;
+  min-height: 200px;
+}
+
+.pie-chart-container canvas {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .no-data-message {

@@ -1,6 +1,14 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import { Chart, BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js'
+import {
+  Chart,
+  BarController,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+  Tooltip,
+  Legend
+} from 'chart.js'
 
 // Registra os componentes necessários
 Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend)
@@ -9,9 +17,7 @@ const props = defineProps({
   chartData: {
     type: Object,
     required: true,
-    validator: (value) => {
-      return value?.labels && value?.datasets
-    }
+    validator: (value) => value?.labels && value?.datasets
   },
   options: {
     type: Object,
@@ -27,38 +33,40 @@ const props = defineProps({
   }
 })
 
-const chartRef = ref(null)
-const chartInstance = ref(null)
-const updateTimeout = ref(null)
+const canvasEl = ref(null) // CORRIGIDO: nome correto usado no template
+let chartInstance = null
+let updateTimeout = null
 
 // Função para destruir o gráfico existente
 const destroyChart = () => {
-  if (chartInstance.value) {
-    chartInstance.value.destroy()
-    chartInstance.value = null
+  if (chartInstance) {
+    chartInstance.destroy()
+    chartInstance = null
   }
-  if (updateTimeout.value) {
-    clearTimeout(updateTimeout.value)
-    updateTimeout.value = null
+  if (updateTimeout) {
+    clearTimeout(updateTimeout)
+    updateTimeout = null
   }
 }
 
 // Função para criar novo gráfico
 const createChart = () => {
-  if (!chartRef.value || !props.chartData) return
-  
-  const ctx = chartRef.value.getContext('2d')
-  chartInstance.value = new Chart(ctx, {
+  if (!canvasEl.value || !props.chartData) return
+
+  const ctx = canvasEl.value.getContext('2d')
+  if (!ctx) return
+
+  chartInstance = new Chart(ctx, {
     type: 'bar',
-    data: JSON.parse(JSON.stringify(props.chartData)), // Deep clone para evitar reatividade
-    options: JSON.parse(JSON.stringify(props.options)) // Deep clone para evitar reatividade
+    data: JSON.parse(JSON.stringify(props.chartData)),
+    options: JSON.parse(JSON.stringify(props.options))
   })
 }
 
 // Atualiza o gráfico de forma segura
 const safeUpdate = () => {
   destroyChart()
-  updateTimeout.value = setTimeout(() => {
+  updateTimeout = setTimeout(() => {
     createChart()
   }, 10)
 }
@@ -89,7 +97,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="chart-container">
-    <canvas ref="chartRef"></canvas>
+    <canvas ref="canvasEl"></canvas>
     <div v-if="!props.chartData?.labels?.length" class="no-data-message">
       Nenhum dado disponível para exibir
     </div>

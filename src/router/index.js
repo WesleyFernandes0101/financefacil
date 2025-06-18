@@ -9,12 +9,29 @@ const routes = [
   { path: '/', redirect: '/login' },
   { path: '/login', component: Login },
   { path: '/register', component: Register },
-  { path: '/dashboard', component: Dashboard },
+  { 
+    path: '/dashboard', 
+    component: Dashboard,
+    meta: { requerAuth: true }
+  },
   { path: '/lancamentos', component: Lancamentos },
   { path: '/receitasdespesas', component: ReceitasDespesas },
 ]
 
-export const router = createRouter({
+const router = createRouter({
   history: createWebHistory(),
   routes
 })
+
+// Proteção de rotas
+router.beforeEach((to, from, next) => {
+  const usuarioLogado = localStorage.getItem('usuarioLogado')
+  
+  if (to.meta.requerAuth && !usuarioLogado) {
+    next('/login')
+  } else {
+    next()
+  }
+})
+
+export default router
