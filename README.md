@@ -4,8 +4,6 @@ Gerencie suas finanças pessoais de forma simples e visual! O **FinanceFácil** 
 
 ## 📷 Visão Geral
 
-<img src="screenshot.png" alt="Dashboard do FinanceFácil" />
-
 > *Painel financeiro com gráficos interativos, histórico detalhado e filtros avançados.*
 
 ---
